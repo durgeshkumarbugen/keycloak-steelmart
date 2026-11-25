@@ -1,0 +1,664 @@
+<#import "template.ftl" as layout>
+<@layout.registrationLayout displayMessage=!messagesPerField.existsError('code','phoneNumber') displayInfo=realm.password && realm.registrationAllowed && !registrationDisabled??; section>
+<#if section = "header">
+<!-- Header will be handled in form section -->
+<#elseif section = "form">
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700&display=swap');
+
+    [v-cloak] > * { display: none; }
+    [v-cloak]::before { content: "loading..."; }
+
+    body {
+      margin: 0;
+      display: flex;
+      justify-content: center;
+       align-items: flex-start;
+      background: #eee;
+      font-family: 'Barlow', sans-serif;
+    }
+
+    .mobile-screen {
+      width: 366px;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header {
+      background: linear-gradient(to right, #B82437, #34438F);
+      height: 220px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .header img {
+      max-width: 150px;
+      width: 100%;
+      height: auto;
+      position: relative;
+      top: -40px;
+      margin: 20px 0;
+    }
+
+    .form-box {
+      background: #fff;
+      border-top-left-radius: 80px;
+      border-top-right-radius: 80px;
+      margin-top: -80px;
+      padding: 30px 20px 20px 30px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+
+    }
+
+    .form-box h1 {
+      font-size: 24px;
+      margin-bottom: 8px;
+      font-weight: bold;
+      color: #232323;
+      font-family: 'Barlow', sans-serif;
+    }
+
+    .form-box p {
+      font-size: 16px;
+      color: #4D4D4D;
+      margin-bottom: 25px;
+      font-weight: 400;
+      font-family: 'Barlow', sans-serif;
+    }
+    .alert-error {
+          display: flex;
+          align-items: center;
+          background-color: #f8d7da;
+          color: #721c24;
+          border: 1px solid #f5c6cb;
+          border-radius: 8px;
+          padding: 12px 16px;
+          font-size: 14px;
+          margin-bottom: 20px;
+          width: 100%;
+          max-width: 370px;
+          box-sizing: border-box;
+      }
+
+    label {
+      font-size: 16px;
+      color: #232323;
+      display: block;
+      margin-bottom: 6px;
+      text-align: center;
+      font-family: 'Barlow', sans-serif;
+    }
+
+    .input-field {
+      width: 300px;
+      height: 56px;
+      border: 1px solid #BADFF2;
+      border-radius: 8px;
+      padding: 0 12px;
+      font-size: 16px;
+      margin-bottom: 5px;
+      background-color: #F4F8FB;
+      font-family: 'Barlow', sans-serif;
+    }
+
+    .error {
+      color: #AF263C;
+      font-size: 16px;
+      text-align: center;
+      padding-top: 4px;
+      display: inline;
+      font-family: 'Barlow', sans-serif;
+    }
+
+    .btn-primary {
+      width: 150px;
+      height: 48px;
+      border: none;
+      border-radius: 6px;
+      background: linear-gradient(to right, #34438F, #B82437);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: 'Barlow', sans-serif;
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .btn-back {
+      background: #FFF;
+      border: 0px;
+      color: #34438F;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 15px;
+      font-family: 'Barlow', sans-serif;
+      font-size: 16px;
+    }
+
+    .version {
+        font-size: 16px;
+        color: #4D4D4D;
+        font-weight: 400;
+        margin-top: auto;
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        padding-bottom: 20px;
+    }
+
+    .hidden { display: none; }
+
+    .captcha-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 4px;
+    }
+
+    .captcha-row {
+      display: flex;
+      align-items: center;
+    }
+
+    .captcha-row canvas {
+      width: 160px;
+      height: 50px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .captcha-row .refresh-btn {
+      font-size: 20px;
+      color: #232323;
+      background: none;
+      border: none;
+      cursor: pointer;
+      position: relative;
+      top: 8px;
+      left: -5px;
+    }
+
+    .captcha-container .input-field {
+      width: 300px;
+      margin: 0 auto;
+      text-align: left;
+    }
+
+    .otp-container {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 25px;
+    }
+
+    .otp-input {
+      width: 32px;
+      height: 32px;
+      text-align: center;
+      font-size: 20px;
+      border: 1px solid #eee;
+      border-radius: 8px;
+      border-radius: 8px;
+      background-color: #eee;
+      font-family: 'Barlow', sans-serif;
+    }
+
+    .otp-input:enabled {
+      background-color: #F4F8FB;
+      border: 1px solid #BADFF2;
+    }
+
+    .timer {
+      font-size: 14px;
+      color: #4D4D4D;
+      margin: 10px 0;
+    }
+
+    .resend {
+      font-size: 14px;
+      color: #34438F;
+      cursor: pointer;
+      font-weight: 600;
+      margin-bottom: 20px;
+      display: block;
+    }
+
+    .mb20 {
+      margin-bottom: 20px;
+    }
+
+    .send-otp-btn {
+      width: 150px;
+      height: 48px;
+      border: none;
+      border-radius: 6px;
+      background: linear-gradient(to right, #34438F, #B82437);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: 'Barlow', sans-serif;
+    }
+
+    .send-otp-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    div#kc-header,
+    h1#kc-page-title
+    {
+      display: none!important;
+  }
+  #kc-content-wrapper
+  {
+    margin-top:0 !important;
+  }
+  .card-pf {
+      padding: 0 !important;
+        border: 0px !important;
+  }
+  .login-pf-page {
+      padding-top: 0 !important;
+  }
+  .login-pf-page .login-pf-header {
+          margin-bottom: 8px;
+
+  }
+  :root{
+      --blue:#0b4ea8;
+      --red:#d71f23;
+      --bg:#ffffff;
+      --text:#222;
+    }
+
+    body{
+      margin:0;
+      font-family: "Segoe UI", Roboto, Arial, sans-serif;
+      background: var(--bg);
+    }
+
+    /* Top bar */
+    .top-bar{
+      height:14px;
+      position:relative;
+      display:flex;
+    }
+    .top-bar .left{
+      background:var(--blue);
+      flex:1;
+    }
+    .top-bar .right{
+      background:var(--red);
+      flex:1;
+    }
+    .diamond{
+      width:18px;
+      height:18px;
+      position:absolute;
+      left:50%;
+      transform: translateX(-50%) rotate(45deg);
+      top:-2px;
+      background: linear-gradient(90deg, var(--blue) 50%, var(--red) 50%);
+    }
+
+    /* Main strip */
+    .strip{
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      padding:40px 20px 0 20px;
+      text-align:center;
+    }
+
+    .phone-line{
+      display:flex;
+      align-items:center;
+      gap:2px;
+    }
+
+    .phone-icon svg{
+      width:15px;
+      height:15px;
+    }
+
+    .phone-text{
+      font-size:15px;
+      color:var(--text);
+      font-weight:600;
+    }
+
+    .muted{
+      font-size:13px;
+      color:#666;
+      margin-left:5px;
+    }
+
+    /* Enhanced theming for Switch Tabs */
+    .login-options {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 20px;
+      gap: 20px;
+    }
+
+    .btn-switch-tab {
+      width: 140px;
+      height: 48px;
+      border: none;
+      border-radius: 6px;
+      background: linear-gradient(to right, #34438F, #B82437);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: 'Barlow', sans-serif;
+      transition: all 0.3s ease-in-out;
+    }
+
+    .btn-switch-tab:hover {
+      box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+    }
+
+    .btn-switch-tab.active {
+      background: linear-gradient(to right, #B82437, #34438F);
+      transform: scale(1.05);
+    }
+</style>
+
+<div id="vue-app">
+  <div v-cloak>
+    <div class="mobile-screen">
+      <div class="header">
+        <img src="${url.resourcesPath}/img/logo.png" alt="JSW Connexion Logo">
+      </div>
+
+      <div class="form-box">
+        <form id="kc-form-login" action="${url.loginAction}" method="post">
+          <!-- Step 1: Login Options -->
+          <div id="step1" v-show="currentStep === 1">
+            <h1>Welcome to JSW Steel Mart</h1><br>
+
+            <!-- Tabs for Login Options with Themed Buttons -->
+            <div class="login-options">
+              <button type="button" class="btn-switch-tab" :class="{ active: loginMethod === 'phone' }" @click="switchLoginMethod('phone')">
+                Login with Phone
+              </button>
+              <button type="button" class="btn-switch-tab" :class="{ active: loginMethod === 'email' }" @click="switchLoginMethod('email')">
+                Login with Email
+              </button>
+            </div>
+
+            <!-- Phone Login Section -->
+            <div v-show="loginMethod === 'phone'">
+              <div class="mb20">
+                <label for="phoneNumber">JSW Registered Mobile Number</label>
+                <input type="tel" inputmode="numeric" id="phoneNumber" name="phoneNumber" class="input-field"
+                       v-model="phoneNumber" maxlength="13"
+                       aria-invalid="<#if messagesPerField.existsError('phoneNumber')>true</#if>"
+                       autofocus />
+                <div id="mobileError" class="error" v-show="showMobileError">
+                  {{ mobileErrorMessage }}
+                </div>
+              </div>
+
+              <!-- Captcha Centered -->
+              <div class="mb20">
+                <div class="captcha-container">
+                  <div class="captcha-row">
+                    <canvas id="captchaCanvas" width="160" height="50"
+                            title="Click to refresh captcha"
+                            @click="generateCaptcha()"></canvas>
+                    <button type="button" class="refresh-btn" @click="generateCaptcha()">
+                      <span class="material-icons">refresh</span>
+                    </button>
+                  </div>
+                  <input type="text" id="captchaInput" v-model="captchaInput"
+                         placeholder="Enter CAPTCHA" class="input-field" />
+                </div>
+                <div id="captchaError" class="error" v-show="showCaptchaError">
+                  Captcha does not match! Please try again.
+                </div>
+              </div>
+
+              <button type="button" class="send-otp-btn"
+                      :disabled="sendButtonText !== initSendButtonText"
+                      @click="validateAndSendOTP()">
+                {{ sendButtonText }}
+              </button>
+            </div>
+
+            <!-- Email Login Section -->
+            <div v-show="loginMethod === 'email'">
+              <div class="mb20">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" name="email" class="input-field"
+                       v-model="email"
+                       placeholder="Enter your email"
+                       autofocus />
+                <div id="emailError" class="error" v-show="showEmailError">
+                  {{ emailErrorMessage }}
+                </div>
+              </div>
+
+              <div class="mb20">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" class="input-field"
+                       v-model="password"
+                       placeholder="Enter your password" />
+                <div id="passwordError" class="error" v-show="showPasswordError">
+                  {{ passwordErrorMessage }}
+                </div>
+              </div>
+
+              <button type="submit" class="btn-primary">Login</button>
+            </div>
+
+            <!-- Login with Google Option -->
+            <div class="mb20 google-login">
+              <p>Or login using:</p>
+              <button type="button" class="btn-primary" @click="loginWithGoogle()" disabled>
+                Login with Google (Coming soon)
+              </button>
+            </div>
+          </div>
+
+          <!-- Step 2: OTP Section (Unchanged for Phone Login) -->
+          <div id="step2" v-show="currentStep === 2">
+            <h1>OTP Verification</h1>
+            <p>You will receive an OTP on your registered phone number.</p>
+            <#if messagesPerField.existsError('code','phoneNumber')>
+              <div class="alert-error">
+                ${kcSanitize(messagesPerField.getFirstError('phoneNumber','code'))?no_esc}
+              </div>
+            </#if>
+            <div class="otp-container">
+              <input type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="otp-input"
+                     v-for="(digit, index) in otpDigits" :key="index"
+                     v-model="otpDigits[index]"
+                     @input="handleOtpInput(index, $event)"
+                     @keydown="handleOtpKeydown(index, $event)"
+                     :ref="'otpInput' + index" />
+            </div>
+            <input type="hidden" id="code" name="code" v-model="otpCode" />
+            <input type="hidden" id="phoneActivated" name="phoneActivated" value="true" />
+            <input type="hidden" id="id-hidden-input" name="credentialId"
+                   <#if auth.selectedCredential?has_content>value="${auth.selectedCredential}"</#if>/>
+            <div class="timer" id="timer">{{ timerText }}</div>
+            <div class="resend" v-show="showResend" @click="resendOtp()">Resend OTP</div>
+            <button type="submit" class="btn-primary" name="login" id="kc-login">
+              ${msg("doLogIn")}
+            </button>
+          </div>
+
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+    var app = new Vue({
+      el: '#vue-app',
+      data: {
+        currentStep: 1,
+        loginMethod: 'phone', // 'phone' or 'email'
+        phoneNumber: '${attemptedPhoneNumber!}'.replace(/^\+91/, ''),
+        email: '',
+        password: '',
+        captchaInput: '',
+        currentCaptcha: '',
+        showMobileError: false,
+        showEmailError: false,
+        showPasswordError: false,
+        mobileErrorMessage: 'Please enter a valid 10-digit mobile number.',
+        emailErrorMessage: 'Please enter a valid email address.',
+        passwordErrorMessage: 'Password cannot be empty.',
+        sendButtonText: '${msg("sendVerificationCode")}',
+        initSendButtonText: '${msg("sendVerificationCode")}',
+        otpDigits: ['', '', '', '', '', ''],
+        otpCode: '',
+        timerText: '',
+        showResend: false,
+        timerInterval: null,
+        errorMessage: ''
+      },
+      mounted() {
+        this.generateCaptcha(); // Initialize the CAPTCHA on mount
+      },
+      methods: {
+        switchLoginMethod(method) {
+          this.loginMethod = method;
+        },
+        loginWithGoogle() {
+          console.log("Google login to be implemented...");
+        },
+        validateAndSendOTP() {
+          this.showMobileError = false;
+          this.showCaptchaError = false;
+
+          const phoneValue = this.phoneNumber.trim();
+          const phoneDigits = phoneValue.replace(/^\+91\s*/, '');
+
+          if (phoneValue.length !== 13 || phoneDigits.length !== 10 || isNaN(phoneDigits)) {
+            this.showMobileError = true;
+            this.mobileErrorMessage = 'Please enter a valid 10-digit mobile number.';
+            return;
+          }
+
+          if (this.captchaInput.trim().toUpperCase() !== this.currentCaptcha) {
+            this.showCaptchaError = true;
+            this.generateCaptcha();
+            return;
+          }
+
+          if (this.sendButtonText !== this.initSendButtonText) {
+            return;
+          }
+
+          const fullPhoneNumber = phoneValue.startsWith('+91') ? phoneValue : '+91' + phoneValue;
+          req(fullPhoneNumber);
+        },
+        generateCaptcha() {
+          const canvas = document.getElementById('captchaCanvas'); // Select the CAPTCHA canvas element
+
+          if (!canvas) return;
+
+          const ctx = canvas.getContext('2d');
+          const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Characters allowed in the CAPTCHA
+          let captchaText = '';
+
+          // Generate a 6-character CAPTCHA code
+          for (let i = 0; i < 6; i++) {
+            captchaText += chars.charAt(Math.floor(Math.random() * chars.length));
+          }
+          this.currentCaptcha = captchaText; // Bind the CAPTCHA text to the Vue state
+
+          // Clear existing canvas graphics
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+          // Set background color for the CAPTCHA
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          // Set font and gradient for CAPTCHA text
+          ctx.font = '24px Barlow';
+          const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
+          gradient.addColorStop(0, '#B82437');
+          gradient.addColorStop(1, '#34438F');
+          ctx.fillStyle = gradient;
+
+          // Draw the CAPTCHA text with random rotations
+          for (let i = 0; i < captchaText.length; i++) {
+            const x = 15 + i * 22;
+            const y = 35 + Math.random() * 5;
+            const angle = (Math.random() - 0.5) * 0.4;
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(angle);
+            ctx.fillText(captchaText[i], 0, 0); // Draw each individual character
+            ctx.restore();
+          }
+
+          // Add small random shapes and lines to the CAPTCHA to make it harder to read for bots
+          for (let i = 0; i < 10; i++) {
+            ctx.strokeStyle = '#B82437';
+            const x = Math.random() * canvas.width;
+            const y = Math.random() * canvas.height;
+            const length = 10 + Math.random() * 10;
+            const angle = Math.random() * 2 * Math.PI;
+            const x2 = x + length * Math.cos(angle);
+            const y2 = y + length * Math.sin(angle);
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+          }
+        },
+        resendOtp() {
+          this.otpDigits = ['', '', '', '', '', ''];
+          const fullPhoneNumber = this.phoneNumber.startsWith('+91')
+            ? this.phoneNumber
+            : '+91' + this.phoneNumber;
+          req(fullPhoneNumber);
+        },
+        handleOtpInput(index, event) {
+          const value = event.target.value;
+          if (value.length === 1 && index < 5) {
+            const nextInput = this.$refs['otpInput' + (index + 1)];
+            if (nextInput && nextInput[0]) {
+              nextInput[0].focus();
+            }
+          }
+        },
+        handleOtpKeydown(index, event) {
+          if (event.key === 'Backspace' && this.otpDigits[index] === '' && index > 0) {
+            const prevInput = this.$refs['otpInput' + (index - 1)];
+            if (prevInput && prevInput[0]) {
+              prevInput[0].focus();
+            }
+          }
+        }
+      }
+    });
+</script>
+</#if>
+</@layout.registrationLayout>

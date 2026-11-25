@@ -1,777 +1,587 @@
 <#import "template.ftl" as layout>
-<@layout.registrationLayout displayMessage=!messagesPerField.existsError('code','phoneNumber') displayInfo=realm.password && realm.registrationAllowed && !registrationDisabled??; section>
+<@layout.registrationLayout displayMessage=!messagesPerField.existsError('code','phoneNumber','username','password') displayInfo=realm.password && realm.registrationAllowed && !registrationDisabled??; section>
 <#if section = "header">
-<!-- Header will be handled in form section -->
 <#elseif section = "form">
 <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&display=swap');
 
-  [v-cloak] > * { display: none; }
-  [v-cloak]::before { content: "loading..."; }
+  [v-cloak] { display: none; }
 
   body {
     margin: 0;
-    display: flex;
-    justify-content: center;
-     align-items: flex-start;
-    background: #eee;
+    background: #efefef;
     font-family: 'Barlow', sans-serif;
   }
 
-  .mobile-screen {
-    width: 366px;
-    position: relative;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .header {
-    background: linear-gradient(to right, #B82437, #34438F);
-    height: 220px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
-
-  .header img {
-    max-width: 150px;
+  .auth-shell {
     width: 100%;
-    height: auto;
-    position: relative;
-    top: -40px;
-    margin: 20px 0;
-  }
-
-  .form-box {
-    background: #fff;
-    border-top-left-radius: 80px;
-    border-top-right-radius: 80px;
-    margin-top: -80px;
-    padding: 30px 20px 20px 30px;
-    text-align: center;
+    min-height: 100vh;
     display: flex;
-    flex-direction: column;
     align-items: center;
-    justify-content: flex-start;
-
+    justify-content: center;
+    background: #f3f3f3;
+    padding: 32px 0;
+    box-sizing: border-box;
   }
 
-  .form-box h1 {
-    font-size: 24px;
-    margin-bottom: 8px;
-    font-weight: bold;
-    color: #232323;
+  .auth-card {
+    width: 100%;
+    max-width: 560px;
+    background: #f4f4f4;
+    border: 1px solid #d8d8d8;
+    box-sizing: border-box;
+    padding: 32px 28px 24px;
+    min-height: 460px;
+  }
+
+  .option-button {
+    width: 100%;
+    height: 62px;
+    border: none;
+    border-radius: 7px;
+    margin-bottom: 18px;
+    color: #fff;
+    font-size: 18px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    cursor: pointer;
     font-family: 'Barlow', sans-serif;
+    box-shadow: none;
   }
 
-  .form-box p {
-    font-size: 16px;
-    color: #4D4D4D;
-    margin-bottom: 25px;
+  .option-button.red {
+    background: #d93a32;
+  }
+
+  .option-button.green {
+    background: #1db36a;
+  }
+
+  .option-button.light {
+    background: #f1f1f1;
+    color: #000;
+    border: 1px solid #d5d5d5;
+    cursor: not-allowed;
+  }
+
+  .option-button .material-icons {
+    font-size: 26px;
+  }
+
+  .option-button .coming-soon {
+    font-size: 12px;
+    font-weight: 500;
+    margin-left: 6px;
+    opacity: 0.75;
+  }
+
+  .section-title {
+    font-size: 38px;
+    line-height: 1.2;
+    margin: 0 0 26px 0;
+    color: #1f1f1f;
     font-weight: 400;
     font-family: 'Barlow', sans-serif;
   }
-  .alert-error {
-        display: flex;
-        align-items: center;
-        background-color: #f8d7da;
-        color: #721c24;
-        border: 1px solid #f5c6cb;
-        border-radius: 8px;
-        padding: 12px 16px;
-        font-size: 14px;
-        margin-bottom: 20px;
-        width: 100%;
-        max-width: 370px;
-        box-sizing: border-box;
-    }
 
-  label {
-    font-size: 16px;
-    color: #232323;
+  .field-label {
     display: block;
-    margin-bottom: 6px;
-    text-align: center;
-    font-family: 'Barlow', sans-serif;
+    color: #4b4b4b;
+    font-size: 15px;
+    margin: 0 0 8px 0;
+    font-weight: 400;
   }
 
-  .input-field {
-    width: 300px;
-    height: 56px;
-    border: 1px solid #BADFF2;
-    border-radius: 8px;
-    padding: 0 12px;
-    font-size: 16px;
-    margin-bottom: 5px;
-    background-color: #F4F8FB;
-    font-family: 'Barlow', sans-serif;
-  }
-
-  .error {
-    color: #AF263C;
-    font-size: 16px;
-    text-align: center;
-    padding-top: 4px;
-    display: inline;
-    font-family: 'Barlow', sans-serif;
-  }
-
-  .btn-primary {
-    width: 150px;
-    height: 48px;
+  .input-text {
+    width: 100%;
     border: none;
-    border-radius: 6px;
-    background: linear-gradient(to right, #34438F, #B82437);
-    color: #fff;
-    font-size: 14px;
-    font-weight: 700;
-    cursor: pointer;
-    font-family: 'Barlow', sans-serif;
-  }
-
-  .btn-primary:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  .btn-back {
-    background: #FFF;
-    border: 0px;
-    color: #34438F;
-    font-weight: 600;
-    cursor: pointer;
-    margin-bottom: 15px;
-    font-family: 'Barlow', sans-serif;
-    font-size: 16px;
-  }
-
-  .version {
-      font-size: 16px;
-      color: #4D4D4D;
-      font-weight: 400;
-      margin-top: auto;
-      position: absolute;
-      bottom: 0;
-      left: 50%;
-      transform: translateX(-50%);
-      padding-bottom: 20px;
-  }
-
-  .hidden { display: none; }
-
-  .captcha-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 4px;
-  }
-
-  .captcha-row {
-    display: flex;
-    align-items: center;
-  }
-
-  .captcha-row canvas {
-    width: 160px;
-    height: 50px;
-    border-radius: 8px;
-    cursor: pointer;
-  }
-
-  .captcha-row .refresh-btn {
+    border-bottom: 2px solid #2f5bd7;
+    background: transparent;
+    height: 42px;
     font-size: 20px;
-    color: #232323;
-    background: none;
-    border: none;
-    cursor: pointer;
-    position: relative;
-    top: 8px;
-    left: -5px;
+    color: #111;
+    padding: 0 2px;
+    margin-bottom: 18px;
+    box-sizing: border-box;
+    outline: none;
+    font-family: 'Barlow', sans-serif;
   }
 
-  .captcha-container .input-field {
-    width: 300px;
-    margin: 0 auto;
-    text-align: left;
+  .input-text[readonly] {
+    border-bottom-color: #bdbdbd;
+    color: #303030;
   }
 
-  .otp-container {
+  .input-text.password {
+    letter-spacing: 1px;
+  }
+
+  .input-inline {
     display: flex;
-    justify-content: center;
+    align-items: center;
     gap: 10px;
-    margin-bottom: 25px;
+    margin-bottom: 18px;
   }
 
-  .otp-input {
-    width: 32px;
-    height: 32px;
-    text-align: center;
-    font-size: 20px;
-    border: 1px solid #eee;
-    border-radius: 8px;
-    border-radius: 8px;
-    background-color: #eee;
-    font-family: 'Barlow', sans-serif;
+  .input-inline .input-text {
+    flex: 1;
+    margin-bottom: 0;
   }
 
-  .otp-input:enabled {
-    background-color: #F4F8FB;
-    border: 1px solid #BADFF2;
-  }
-
-  .timer {
-    font-size: 14px;
-    color: #4D4D4D;
-    margin: 10px 0;
-  }
-
-  .resend {
-    font-size: 14px;
-    color: #34438F;
-    cursor: pointer;
-    font-weight: 600;
-    margin-bottom: 20px;
-    display: block;
-  }
-
-  .mb20 {
-    margin-bottom: 20px;
-  }
-
-  .send-otp-btn {
-    width: 150px;
-    height: 48px;
+  .inline-button {
+    min-width: 120px;
+    height: 44px;
     border: none;
-    border-radius: 6px;
-    background: linear-gradient(to right, #34438F, #B82437);
+    border-radius: 8px;
+    background: #2f5bd7;
     color: #fff;
-    font-size: 14px;
-    font-weight: 700;
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    text-transform: uppercase;
+    font-family: 'Barlow', sans-serif;
+  }
+
+  .inline-button.light {
+    background: transparent;
+    color: #2f5bd7;
+    border: none;
+    min-width: 1px;
+    padding: 0;
+    width: auto;
+  }
+
+  .inline-button.primary {
+    background: #2f5bd7;
+  }
+
+  .inline-button.secondary {
+    background: transparent;
+    color: #2f5bd7;
+    min-width: auto;
+    padding: 0 12px;
+  }
+
+  .actions-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    margin-top: 10px;
+  }
+
+  .actions-row .secondary {
+    background: transparent;
+    border: none;
+    color: #2f5bd7;
+    font-size: 18px;
+    text-transform: uppercase;
     cursor: pointer;
     font-family: 'Barlow', sans-serif;
   }
 
-  .send-otp-btn:disabled {
-    opacity: 0.6;
+  .actions-row .primary {
+    min-width: 150px;
+    height: 52px;
+    border: none;
+    border-radius: 8px;
+    background: #2f5bd7;
+    color: #fff;
+    font-size: 18px;
+    font-weight: 700;
+    text-transform: uppercase;
+    cursor: pointer;
+    font-family: 'Barlow', sans-serif;
+  }
+
+  .actions-row .primary:disabled {
+    opacity: 0.7;
     cursor: not-allowed;
   }
 
-  div#kc-header,
-  h1#kc-page-title
-  {
-    display: none!important;
-}
-#kc-content-wrapper
-{
-  margin-top:0 !important;
-}
-.card-pf {
-    padding: 0 !important;
-      border: 0px !important;
-}
-.login-pf-page {
-    padding-top: 0 !important;
-}
-.login-pf-page .login-pf-header {
-        margin-bottom: 8px;
-
-}
-:root{
-    --blue:#0b4ea8;
-    --red:#d71f23;
-    --bg:#ffffff;
-    --text:#222;
+  .muted-text {
+    font-size: 14px;
+    color: #4b4b4b;
+    margin-top: 8px;
   }
 
-  body{
-    margin:0;
-    font-family: "Segoe UI", Roboto, Arial, sans-serif;
-    background: var(--bg);
-  }
-
-  /* Top bar */
-  .top-bar{
-    height:14px;
-    position:relative;
-    display:flex;
-  }
-  .top-bar .left{
-    background:var(--blue);
-    flex:1;
-  }
-  .top-bar .right{
-    background:var(--red);
-    flex:1;
-  }
-  .diamond{
-    width:18px;
-    height:18px;
-    position:absolute;
-    left:50%;
-    transform: translateX(-50%) rotate(45deg);
-    top:-2px;
-    background: linear-gradient(90deg, var(--blue) 50%, var(--red) 50%);
-  }
-
-  /* Main strip */
-  .strip{
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    padding:40px 20px 0 20px;
-    text-align:center;
-  }
-
-  .phone-line{
-    display:flex;
-    align-items:center;
-    gap:2px;
-  }
-
-  .phone-icon svg{
-    width:15px;
-    height:15px;
-  }
-
-  .phone-text{
-    font-size:15px;
-    color:var(--text);
-    font-weight:600;
-  }
-
-  .muted{
-    font-size:13px;
-    color:#666;
-    margin-left:5px;
-  }
+  .hidden { display: none !important; }
 </style>
 
-<style>
-   :root{
-     --blue:#0b4ea8;
-     --red:#d71f23;
-     --bg:#ffffff;
-     --text:#222;
-   }
+<form id="kc-form-login" action="${url.loginAction}" method="post">
+  <input type="hidden" id="username" name="username" v-model="email" />
+  <input type="hidden" id="password" name="password" v-model="password" />
+  <input type="hidden" id="phoneNumberHidden" name="phoneNumber" v-model="phoneNumber" />
+  <input type="hidden" id="phoneActivated" name="phoneActivated" value="false" />
+  <input type="hidden" id="code" name="code" v-model="otpCode" />
+</form>
 
-   body{
-     margin:0;
-     font-family: "Segoe UI", Roboto, Arial, sans-serif;
-     background: var(--bg);
-   }
+<div id="auth-app" v-cloak>
+    <div class="auth-shell">
+      <div class="auth-card">
+        <div v-if="screen === 'home'">
+          <button type="button" class="option-button red" @click="showEmailFlow()">
+            <span class="material-icons">mail</span>
+            <span>Sign in with email</span>
+          </button>
 
-   /* Top bar */
-   .top-bar{
-     height:14px;
-     position:relative;
-     display:flex;
-   }
-   .top-bar .left{
-     background:var(--blue);
-     flex:1;
-   }
-   .top-bar .right{
-     background:var(--red);
-     flex:1;
-   }
-   .diamond{
-     width:18px;
-     height:18px;
-     position:absolute;
-     left:50%;
-     transform: translateX(-50%) rotate(45deg);
-     top:-2px;
-     background: linear-gradient(90deg, var(--blue) 50%, var(--red) 50%);
-   }
+          <button type="button" class="option-button green" @click="showPhoneFlow()">
+            <span class="material-icons">phone</span>
+            <span>Sign in with phone</span>
+          </button>
 
-   /* Main strip */
-   .strip{
-     display:flex;
-     justify-content:center;
-     align-items:center;
-     padding:20px 20px;
-     text-align:center;
-   }
+          <button type="button" class="option-button light" disabled>
+            <span class="material-icons">g_mobiledata</span>
+            <span>Sign in with Google</span>
+            <span class="coming-soon">Coming soon</span>
+          </button>
+        </div>
 
-   .phone-line{
-     display:flex;
-     align-items:center;
-     gap:2px;
-   }
+        <div v-else-if="screen === 'email'">
+          <h2 class="section-title">Sign in with email</h2>
 
-   .phone-icon svg{
-     width:15px;
-     height:15px;
-   }
+          <label class="field-label" for="emailField">Email</label>
+          <input id="emailField" class="input-text" type="email" v-model="email" placeholder="" autocomplete="email" />
+          <div class="muted-text" v-if="emailErrorMessage" style="color:#d93a32;">{{ emailErrorMessage }}</div>
 
-   .phone-text{
-     font-size:15px;
-     color:var(--text);
-     font-weight:600;
-   }
+          <div class="actions-row">
+            <button type="button" class="secondary" @click="backHome()">CANCEL</button>
+            <button type="button" class="primary" :disabled="emailCheckInProgress" @click="handleEmailNext()">{{ emailCheckInProgress ? 'CHECKING' : 'NEXT' }}</button>
+          </div>
+        </div>
 
-   .muted{
-     font-size:13px;
-     color:#666;
-     margin-left:5px;
-   }
- </style>
+        <div v-else-if="screen === 'password'">
+          <h2 class="section-title">Sign in with email</h2>
 
+          <label class="field-label">Email</label>
+          <input class="input-text" type="text" :value="email" readonly />
 
-<div id="vue-app">
-  <div v-cloak>
-    <div class="mobile-screen">
-      <div class="header">
-        <img src="${url.resourcesPath}/img/logo.png" alt="JSW Connexion Logo">
-      </div>
+          <label class="field-label" for="passwordField">Password</label>
+          <input id="passwordField" class="input-text password" type="password" v-model="password" autocomplete="current-password" />
 
-      <div class="form-box">
-        <form id="kc-form-login" action="${url.loginAction}" method="post">
+          <div class="actions-row">
+            <button type="button" class="secondary" @click="goBackToEmail()">CANCEL</button>
+            <button type="button" class="primary" @click="submitPassword()">NEXT</button>
+          </div>
+        </div>
 
-          <!-- Step 1: Mobile + Captcha -->
-          <div id="step1" v-show="currentStep === 1">
-            <h1>Welcome to JSW Steel &amp; Coated – Channel Partner Digital Ecosystem</h1><br>
+        <div v-else-if="screen === 'create'">
+          <h2 class="section-title">Create account</h2>
 
+          <label class="field-label">Email</label>
+          <input class="input-text" type="text" :value="email" readonly />
 
-            <div class="mb20">
-              <label for="phoneNumber">JSW Registered Mobile Number</label>
-              <input type="tel" inputmode="numeric" id="phoneNumber" name="phoneNumber" class="input-field"
-                     v-model="phoneNumber" maxlength="13"
-                     aria-invalid="<#if messagesPerField.existsError('phoneNumber')>true</#if>"
-                     autofocus />
-              <div id="mobileError" class="error" v-show="showMobileError">
-                {{ mobileErrorMessage }}
-              </div>
+          <label class="field-label" for="fullNameField">First &amp; last name</label>
+          <input id="fullNameField" class="input-text" type="text" v-model="fullName" />
 
-            </div>
+          <label class="field-label" for="createPasswordField">Choose password</label>
+          <input id="createPasswordField" class="input-text password" type="password" v-model="createPassword" autocomplete="new-password" />
+          <div class="muted-text" v-if="createAccountErrorMessage" style="color:#d93a32;">{{ createAccountErrorMessage }}</div>
 
-            <!-- Captcha Centered -->
-            <div class="mb20">
-              <div class="captcha-container">
-                <div class="captcha-row">
-                  <canvas id="captchaCanvas" width="160" height="50"
-                          title="Click to refresh captcha"
-                          @click="generateCaptcha()"></canvas>
-                  <button type="button" class="refresh-btn" @click="generateCaptcha()">
-                    <span class="material-icons">refresh</span>
-                  </button>
-                </div>
-                <input type="text" id="captchaInput" v-model="captchaInput"
-                       placeholder="Enter CAPTCHA" class="input-field" />
-              </div>
-              <div id="captchaError" class="error" v-show="showCaptchaError">
-                Captcha does not match! Please try again.
-              </div>
-            </div>
-
-            <button type="button" class="send-otp-btn"
-                    :disabled="sendButtonText !== initSendButtonText"
-                    @click="validateAndSendOTP()">
-              {{ sendButtonText }}
-            </button>
-
-           <div class="strip">
-                      <div class="phone-line">
-
-                        <div></div>
-                        <div></div>
-                        <div class="phone-text">Need help? </div>
-                        <div class="phone-icon">
-                          <svg viewBox="0 0 24 24" fill="none">
-                            <path
-                              d="M21 16.5v3a1.5 1.5 0 0 1-1.5 1.5C10.178 21 3 13.822 3 4.5A1.5 1.5 0 0 1 4.5 3h3A1.5 1.5 0 0 1 9 4.5c0 1.66.33 3.26.92 4.75a1 1 0 0 1-.23 1.02L8.7 11.4a14.2 14.2 0 0 0 5.9 5.9l.13-.96a1 1 0 0 1 1.02-.23c1.48.6 3.08.92 4.75.92A1.5 1.5 0 0 1 21 16.5z"
-                              fill="#222"></path>
-                          </svg>
-                        </div>
-                        <br><br><br><br>
-
-
-                        <div class="phone-text">
-                          <a href="tel:1800225225">1800-225-225</a>
-                          <span class="muted">(toll-free)</span>
-                        </div>
-
-                      </div>
-                    </div>
-                    </div>
-          <!-- Step 2: OTP Section -->
-          <div id="step2" v-show="currentStep === 2">
-           <!-- <button type="button" class="btn-back" @click="goBack()">← Back</button> -->
-            <h1>OTP Verification</h1>
-            <p>You will receive an OTP on your registered phone number.</p>
-
-            <#if messagesPerField.existsError('code','phoneNumber')>
-                <div class="alert-error">
-                    ${kcSanitize(messagesPerField.getFirstError('phoneNumber','code'))?no_esc}
-                </div>
-            </#if>
-
-            <div class="otp-container">
-              <input type="tel" inputmode="numeric" pattern="[0-9]*"  maxlength="1" class="otp-input"
-                     v-for="(digit, index) in otpDigits" :key="index"
-                     v-model="otpDigits[index]"
-                     @input="handleOtpInput(index, $event)"
-                     @keydown="handleOtpKeydown(index, $event)"
-                     :ref="'otpInput' + index" />
-            </div>
-
-            <input type="hidden" id="code" name="code" v-model="otpCode" />
-            <input type="hidden" id="phoneActivated" name="phoneActivated" value="true" />
-            <input type="hidden" id="id-hidden-input" name="credentialId"
-                   <#if auth.selectedCredential?has_content>value="${auth.selectedCredential}"</#if>/>
-
-            <div class="timer" id="timer">{{ timerText }}</div>
-            <div class="resend" v-show="showResend" @click="resendOtp()">Resend OTP</div>
-
-            <button type="submit" class="btn-primary" name="login" id="kc-login">
-              ${msg("doLogIn")}
+          <div class="actions-row">
+            <button type="button" class="secondary" @click="goBackToEmail()">CANCEL</button>
+            <button type="button" class="primary" :disabled="createAccountInProgress" @click="submitCreateAccount()">
+              {{ createAccountInProgress ? 'SAVING' : 'SAVE' }}
             </button>
           </div>
+        </div>
 
+        <div v-else-if="screen === 'phone-screen' || screen === 'otp-screen'">
+          <div v-if="screen === 'phone-screen'">
+            <div class="mb20">
+              <label for="phoneNumberInput" class="field-label">JSW Registered Mobile Number</label>
+              <input type="tel" id="phoneNumberInput" class="input-text" v-model="phoneNumber" maxlength="10" inputmode="numeric" />
+            </div>
 
-        </form>
+            <div class="mb20">
+              <label class="field-label" for="captchaInput">Captcha</label>
+              <div class="input-inline">
+                <input type="text" id="captchaInput" class="input-text" v-model="captchaInput" />
+                <button type="button" class="inline-button light" @click="generateCaptcha()">↻</button>
+              </div>
+              <div class="muted-text">Captcha: <strong>{{ currentCaptcha }}</strong></div>
+            </div>
+
+            <div class="actions-row">
+              <button type="button" class="secondary" @click="backHome()">CANCEL</button>
+              <button type="button" class="primary" @click="validateAndSendOTP()">NEXT</button>
+            </div>
+          </div>
+
+          <div v-else>
+            <h2 class="section-title">OTP Verification</h2>
+            <p class="muted-text">You will receive an OTP on your registered phone number.</p>
+
+            <div class="input-inline" style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap; margin-top:26px;">
+              <input v-for="(digit, index) in otpDigits" :key="index" type="text" maxlength="1" inputmode="numeric"
+                     class="input-text" style="width:42px; text-align:center; font-size:22px; margin:0; border-bottom:2px solid #2f5bd7;"
+                     v-model="otpDigits[index]" @input="handleOtpInput(index, $event)" @keydown="handleOtpKeydown(index, $event)" :ref="'otpInput' + index" />
+            </div>
+
+            <div class="muted-text" v-if="timerText">{{ timerText }}</div>
+            <div class="muted-text" v-if="showResend" style="cursor:pointer; color:#2f5bd7;" @click="resendOtp()">Resend OTP</div>
+
+            <div class="actions-row" style="margin-top:26px;">
+              <button type="button" class="secondary" @click="backHome()">CANCEL</button>
+              <button type="button" class="primary" @click="submitPhoneOtp()">VERIFY</button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
 <script type="text/javascript">
-function req(phoneNumber) {
-  const params = {params: {phoneNumber}}
-  axios.get(window.location.origin + '/realms/${realm.name}/sms/authentication-code', params)
-    .then(res => {
-      app.disableSend(res.data.expires_in);
-      app.currentStep = 2;
-      app.$nextTick(() => {
-        if (app.$refs.otpInput0 && app.$refs.otpInput0[0]) {
-          app.$refs.otpInput0[0].focus();
-        }
-      });
-    })
-    .catch(e => {
-      app.errorMessage = e.response && e.response.data && e.response.data.error
-        ? e.response.data.error
-        : 'Failed to send OTP. Please try again.';
-      app.showMobileError = true;
-      app.mobileErrorMessage = app.errorMessage;
-      app.sendButtonText = app.initSendButtonText;
-    });
-}
-
-var app = new Vue({
-  el: '#vue-app',
-  data: {
-    currentStep: <#if messagesPerField.existsError('code','phoneNumber')>2<#else>1</#if>,
-    phoneNumber: '${attemptedPhoneNumber!}'.replace(/^\+91/, ''),
-    captchaInput: '',
-    currentCaptcha: '',
-    showMobileError: false,
-    showCaptchaError: false,
-    mobileErrorMessage: 'Please enter a valid 10-digit mobile number.',
-    sendButtonText: '${msg("sendVerificationCode")}',
-    initSendButtonText: '${msg("sendVerificationCode")}',
-    otpDigits: ['', '', '', '', '', ''],
-    otpCode: '',
-    timerText: '',
-    showResend: false,
-    timerInterval: null,
-    errorMessage: ''
-  },
-  mounted() {
-    this.generateCaptcha();
-    this.ensurePhonePrefix();
-
-    // If there's an OTP error, focus on first OTP input and restore timer
-    <#if messagesPerField.existsError('code','phoneNumber')>
-    this.$nextTick(() => {
-      if (this.$refs.otpInput0 && this.$refs.otpInput0[0]) {
-        this.$refs.otpInput0[0].focus();
-      }
-    });
-    // Fetch remaining time from server
-    this.fetchRemainingTime();
-    </#if>
-  },
-  watch: {
-    phoneNumber(val) {
-      this.ensurePhonePrefix();
+  var authApp = new Vue({
+    el: '#auth-app',
+    data: {
+      screen: 'home',
+      email: '',
+      password: '',
+      fullName: '',
+      createPassword: '',
+      phoneNumber: '',
+      captchaInput: '',
+      currentCaptcha: '',
+      otpCode: '',
+      otpDigits: ['', '', '', '', '', ''],
+      timerText: '',
+      showResend: false,
+      emailCheckInProgress: false,
+      emailErrorMessage: '',
+      createAccountInProgress: false,
+      createAccountErrorMessage: '',
+      registrationAllowed: <#if realm.registrationAllowed>true<#else>false</#if>
     },
-    otpDigits: {
-      handler(val) {
-        this.otpCode = val.join('');
-      },
-      deep: true
-    }
-  },
-  methods: {
-    ensurePhonePrefix() {
-      if (!this.phoneNumber.startsWith('+91')) {
-        const cleaned = this.phoneNumber.replace(/^\+91\s*/,'');
-        this.phoneNumber = '+91' + cleaned;
-      }
-    },
-    generateCaptcha() {
-      const canvas = document.getElementById('captchaCanvas');
-      if (!canvas) return;
-
-      const ctx = canvas.getContext('2d');
-      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-      let captchaText = '';
-
-      for (let i = 0; i < 6; i++) {
-        captchaText += chars.charAt(Math.floor(Math.random() * chars.length));
-      }
-      this.currentCaptcha = captchaText;
-
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      ctx.font = '24px Barlow';
-      const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
-      gradient.addColorStop(0, '#B82437');
-      gradient.addColorStop(1, '#34438F');
-      ctx.fillStyle = gradient;
-
-      for (let i = 0; i < captchaText.length; i++) {
-        const x = 15 + i * 22;
-        const y = 35 + Math.random() * 5;
-        const angle = (Math.random() - 0.5) * 0.5;
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.rotate(angle);
-        ctx.fillText(captchaText[i], 0, 0);
-        ctx.restore();
-      }
-
-      for (let i = 0; i < 10; i++) {
-        ctx.strokeStyle = '#B82437';
-        const x = Math.random() * canvas.width;
-        const y = Math.random() * canvas.height;
-        const length = 10 + Math.random() * 10;
-        const angle = Math.random() * 2 * Math.PI;
-        const x2 = x + length * Math.cos(angle);
-        const y2 = y + length * Math.sin(angle);
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.lineTo(x2, y2);
-        ctx.stroke();
-      }
-    },
-    validateAndSendOTP() {
-      this.showMobileError = false;
-      this.showCaptchaError = false;
-
-      const phoneValue = this.phoneNumber.trim();
-      const phoneDigits = phoneValue.replace(/^\+91\s*/, '');
-
-      if (phoneValue.length !== 13 || phoneDigits.length !== 10 || isNaN(phoneDigits)) {
-        this.showMobileError = true;
-        this.mobileErrorMessage = 'Please enter a valid 10-digit mobile number.';
-        return;
-      }
-
-      if (this.captchaInput.trim().toUpperCase() !== this.currentCaptcha) {
-        this.showCaptchaError = true;
-        this.generateCaptcha();
-        return;
-      }
-
-      if (this.sendButtonText !== this.initSendButtonText) {
-        return;
-      }
-
-      const fullPhoneNumber = phoneValue.startsWith('+91') ? phoneValue : '+91' + phoneValue;
-      req(fullPhoneNumber);
-    },
-    disableSend(seconds) {
-      if (seconds <= 0) {
-        this.sendButtonText = this.initSendButtonText;
-        this.showResend = true;
-        this.timerText = '';
-      } else {
-        const minutes = Math.floor(seconds / 60) + '';
-        const seconds_ = seconds % 60 + '';
-        const formattedTime = minutes.padStart(2, '0') + ':' + seconds_.padStart(2, '0');
-
-         this.sendButtonText = formattedTime;
-         this.timerText = 'Resend OTP in ' + formattedTime;
-        this.showResend = false;
-        setTimeout(() => {
-          this.disableSend(seconds - 1);
-        }, 1000);
-      }
-    },
-    handleOtpInput(index, event) {
-      const value = event.target.value;
-      if (value.length === 1 && index < 5) {
-        const nextInput = this.$refs['otpInput' + (index + 1)];
-        if (nextInput && nextInput[0]) {
-          nextInput[0].focus();
-        }
-      }
-    },
-    handleOtpKeydown(index, event) {
-      if (event.key === 'Backspace' && this.otpDigits[index] === '' && index > 0) {
-        const prevInput = this.$refs['otpInput' + (index - 1)];
-        if (prevInput && prevInput[0]) {
-          prevInput[0].focus();
-        }
-      }
-    },
-    resendOtp() {
-      this.otpDigits = ['', '', '', '', '', ''];
-      const fullPhoneNumber = this.phoneNumber.startsWith('+91') ? this.phoneNumber : '+91' + this.phoneNumber;
-      req(fullPhoneNumber);
-    },
-    goBack() {
-      this.currentStep = 1;
-      this.otpDigits = ['', '', '', '', '', ''];
-      this.captchaInput = '';
+    mounted: function() {
       this.generateCaptcha();
     },
-    fetchRemainingTime() {
-      const fullPhoneNumber = this.phoneNumber.startsWith('+91') ? this.phoneNumber : '+91' + this.phoneNumber;
-      const params = {params: {phoneNumber: fullPhoneNumber}};
+    watch: {
+      otpDigits: {
+        handler: function(val) {
+          this.otpCode = val.join('');
+          document.getElementById('code').value = this.otpCode;
+        },
+        deep: true
+      }
+    },
+    methods: {
+      backHome: function() {
+        this.screen = 'home';
+        this.email = '';
+        this.password = '';
+        this.fullName = '';
+        this.createPassword = '';
+        this.phoneNumber = '';
+        this.captchaInput = '';
+        this.otpDigits = ['', '', '', '', '', ''];
+        this.timerText = '';
+        this.showResend = false;
+        this.otpCode = '';
+        this.emailCheckInProgress = false;
+        this.emailErrorMessage = '';
+        this.createAccountInProgress = false;
+        this.createAccountErrorMessage = '';
+        document.getElementById('phoneActivated').value = 'false';
+        document.getElementById('phoneNumberHidden').value = '';
+        document.getElementById('code').value = '';
+        this.generateCaptcha();
+      },
+      showEmailFlow: function() {
+        this.screen = 'email';
+        this.emailErrorMessage = '';
+        this.createAccountErrorMessage = '';
+      },
+      showPhoneFlow: function() {
+        this.screen = 'phone-screen';
+        this.generateCaptcha();
+      },
+      handleEmailNext: function() {
+        const value = (this.email || '').trim();
+        if (!value) {
+          this.emailErrorMessage = 'Please enter your email.';
+          return;
+        }
+        this.emailErrorMessage = '';
+        this.email = value;
+        this.emailCheckInProgress = true;
 
-      axios.get(window.location.origin + '/realms/${realm.name}/sms/authentication-code', params)
-        .then(res => {
-          if (res.data.expires_in && res.data.expires_in > 0) {
-            this.disableSend(res.data.expires_in);
-          } else {
-            this.showResend = true;
-            this.timerText = '';
+        var vm = this;
+        axios.get(window.location.origin + '/realms/${realm.name}/sms/user-exists', {
+          params: { email: value }
+        }).then(function(res) {
+          var existsValue = res && res.data ? res.data.exists : false;
+          var exists = existsValue === true || existsValue === 'true';
+          if (!exists && !vm.registrationAllowed) {
+            vm.emailErrorMessage = 'Registration is disabled. Please contact support.';
+            return;
           }
-        })
-        .catch(e => {
-          // If fetching fails, assume timer expired and show resend
-          this.showResend = true;
-          this.timerText = '';
+          vm.createAccountErrorMessage = '';
+          vm.screen = exists ? 'password' : 'create';
+        }).catch(function(err) {
+          vm.emailErrorMessage = 'Unable to verify email right now. Please try again.';
+        }).then(function() {
+          vm.emailCheckInProgress = false;
         });
-    }
-  }
-});
+      },
+      goBackToEmail: function() {
+        this.screen = 'email';
+        this.emailErrorMessage = '';
+        this.createAccountErrorMessage = '';
+      },
+      submitPassword: function() {
+        if (this.password && this.password.length > 0) {
+          document.getElementById('phoneActivated').value = 'false';
+          document.getElementById('phoneNumberHidden').value = '';
+          document.getElementById('code').value = '';
+          document.getElementById('username').value = this.email;
+          document.getElementById('password').value = this.password;
+          document.getElementById('kc-form-login').submit();
+        }
+      },
+      submitCreateAccount: function() {
+        if (!this.fullName || !this.createPassword) {
+          this.createAccountErrorMessage = 'Please enter full name and password.';
+          return;
+        }
+        this.createAccountErrorMessage = '';
+        this.createAccountInProgress = true;
 
-document.addEventListener('DOMContentLoaded', function() {
-  const form = document.getElementById('kc-form-login');
-  if (form) {
-    form.addEventListener('submit', function(e) {
-      const phoneNumberInput = document.getElementById('phoneNumber');
-      if (phoneNumberInput) {
-        const phoneNumber = phoneNumberInput.value.trim();
-        if (phoneNumber && !phoneNumber.startsWith('+91')) {
-          phoneNumberInput.value = '+91' + phoneNumber;
+        document.getElementById('phoneActivated').value = 'false';
+        document.getElementById('phoneNumberHidden').value = '';
+        document.getElementById('code').value = '';
+
+        var trimmedName = this.fullName.trim();
+        var nameParts = trimmedName.split(/\s+/);
+        var firstName = nameParts[0] || trimmedName;
+        var lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : firstName;
+
+        var payload = new URLSearchParams();
+        payload.append('email', this.email);
+        payload.append('firstName', firstName);
+        payload.append('lastName', lastName);
+        payload.append('password', this.createPassword);
+
+        var vm = this;
+        axios.post(window.location.origin + '/realms/${realm.name}/sms/register-user',
+          payload,
+          { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+        ).then(function() {
+          vm.password = vm.createPassword;
+          document.getElementById('username').value = vm.email;
+          document.getElementById('password').value = vm.password;
+          document.getElementById('kc-form-login').submit();
+        }).catch(function(err) {
+          var status = err && err.response ? err.response.status : 0;
+          if (status === 409) {
+            vm.createAccountErrorMessage = 'Email is already registered. Please sign in with password.';
+            vm.screen = 'password';
+            return;
+          }
+          if (status === 403) {
+            vm.createAccountErrorMessage = 'Registration is disabled. Please contact support.';
+            return;
+          }
+          vm.createAccountErrorMessage = 'Unable to create account. Please try again.';
+        }).then(function() {
+          vm.createAccountInProgress = false;
+        });
+      },
+      generateCaptcha: function() {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        let captcha = '';
+        for (let i = 0; i < 5; i++) {
+          captcha += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        this.currentCaptcha = captcha;
+        this.captchaInput = '';
+      },
+      validateAndSendOTP: function() {
+        if ((this.phoneNumber || '').trim().length !== 10) {
+          return;
+        }
+        if ((this.captchaInput || '').trim().toUpperCase() !== (this.currentCaptcha || '').toUpperCase()) {
+          this.generateCaptcha();
+          return;
+        }
+        this.sendOtpForPhone();
+      },
+      sendOtpForPhone: function() {
+        var vm = this;
+        axios.get(window.location.origin + '/realms/${realm.name}/sms/authentication-code', {
+          params: { phoneNumber: '+91' + this.phoneNumber }
+        }).then(function(res) {
+          vm.screen = 'otp-screen';
+          vm.showResend = false;
+          vm.otpDigits = ['', '', '', '', '', ''];
+          vm.otpCode = '';
+          vm.disableSend(res.data.expires_in || 60);
+        }).catch(function(err) {
+          vm.generateCaptcha();
+        });
+      },
+      disableSend: function(seconds) {
+        var vm = this;
+        if (seconds <= 0) {
+          this.timerText = '';
+          this.showResend = true;
+          return;
+        }
+
+        var mins = Math.floor(seconds / 60);
+        var secs = seconds % 60;
+        this.timerText = 'Resend OTP in ' + String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+        this.showResend = false;
+        setTimeout(function() {
+          vm.disableSend(seconds - 1);
+        }, 1000);
+      },
+      handleOtpInput: function(index, event) {
+        var value = (event.target.value || '').replace(/\D/g, '');
+        this.otpDigits[index] = value.slice(-1);
+        if (value && index < 5) {
+          var next = this.$refs['otpInput' + (index + 1)];
+          if (next && next[0]) {
+            next[0].focus();
+          }
+        }
+      },
+      handleOtpKeydown: function(index, event) {
+        if (event.key === 'Backspace' && !this.otpDigits[index]) {
+          if (index > 0) {
+            var prev = this.$refs['otpInput' + (index - 1)];
+            if (prev && prev[0]) {
+              prev[0].focus();
+            }
+          }
+        }
+      },
+      resendOtp: function() {
+        this.otpDigits = ['', '', '', '', '', ''];
+        this.otpCode = '';
+        this.sendOtpForPhone();
+      },
+      submitPhoneOtp: function() {
+        var otp = this.otpCode || this.otpDigits.join('');
+        if (otp && otp.length === 6) {
+          document.getElementById('phoneActivated').value = 'true';
+          document.getElementById('username').value = '';
+          document.getElementById('password').value = '';
+          document.getElementById('phoneNumberHidden').value = '+91' + this.phoneNumber;
+          document.getElementById('code').value = otp;
+          document.getElementById('kc-form-login').submit();
         }
       }
-    });
-  }
-});
+    }
+  });
 </script>
 </#if>
 </@layout.registrationLayout>
+

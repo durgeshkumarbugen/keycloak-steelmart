@@ -37,7 +37,7 @@ public abstract class FullSmsSenderAbstractService implements MessageSenderServi
     @Override
     public void sendSmsMessage(TokenCodeType type, String phoneNumber, String code, int expires, String kind)
             throws MessageSendException {
-        final String defaultMessage = String.format("JSW Connect+: Your OTP is %s. Valid for %s minutes. Do not share with anyone.", code, expires / 60);
+        final String defaultMessage = String.format("Your One-Time Password (OTP) for logging in to the Mobile App is %s. This OTP is valid for %s minutes. Please do not share it with anyone for security reasons. Thank You, 360-Degree Cloud", code, expires / 60);
         final String MESSAGE = localizeMessage(type, phoneNumber, code, expires).orElse(defaultMessage);
         sendMessage(phoneNumber, MESSAGE);
     }
