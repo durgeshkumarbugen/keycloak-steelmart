@@ -22,10 +22,10 @@ import java.util.Date;
                         "AND t.createdAt >= :date AND t.type = :type"
         ),
         @NamedQuery(
-            name = "processesSinceSource",
-            query = "SELECT COUNT(t) FROM TokenCode t WHERE t.realmId = :realmId " +
-                "AND t.ip = :addr " +
-                "AND t.createdAt >= :date AND t.type = :type"
+                name = "processesSinceSource",
+                query = "SELECT COUNT(t) FROM TokenCode t WHERE t.realmId = :realmId " +
+                        "AND t.ip = :addr " +
+                        "AND t.createdAt >= :date AND t.type = :type"
         )
 })
 public class TokenCode {
@@ -54,11 +54,19 @@ public class TokenCode {
     @Column(name = "EXPIRES_AT", nullable = false)
     private Date expiresAt;
 
+    public Date getExpiresAt() {
+        return expiresAt;
+    }
+
     @Column(name = "CONFIRMED", nullable = false)
     private Boolean confirmed;
 
     @Column(name = "BY_WHOM", nullable = true)
     private String byWhom;
+
+    public String getByWhom() {
+        return byWhom;
+    }
 
     @Column(name = "IP")
     private String ip;

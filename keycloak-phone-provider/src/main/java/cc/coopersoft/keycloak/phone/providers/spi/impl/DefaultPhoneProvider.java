@@ -46,7 +46,7 @@ public class DefaultPhoneProvider implements PhoneProvider {
 
         if (Validation.isBlank(config.get("service")))
             logger.warn("No message sender service provider specified! Default provider'" +
-                this.service + "' will be used. You can use keycloak start param '--spi-phone-default-service' to specify a different one. ");
+                    this.service + "' will be used. You can use keycloak start param '--spi-phone-default-service' to specify a different one. ");
 
         this.tokenExpiresIn = config.getInt("tokenExpiresIn", 60);
         this.targetHourMaximum = config.getInt("targetHourMaximum",3);
@@ -68,7 +68,7 @@ public class DefaultPhoneProvider implements PhoneProvider {
 
     private Optional<String> getStringConfigValue(String configName){
         return OptionalUtils.ofBlank(OptionalUtils.ofBlank(config.get(getRealmName() + "-" + configName))
-            .orElse(config.get(configName)));
+                .orElse(config.get(configName)));
     }
 
     private boolean getBooleanConfigValue(String configName, boolean defaultValue){
@@ -130,7 +130,12 @@ public class DefaultPhoneProvider implements PhoneProvider {
         }
 
         TokenCodeRepresentation token = TokenCodeRepresentation.forPhoneNumber(phoneNumber);
-        if (Utils.findUserByPhone(session, session.getContext().getRealm(), phoneNumber).isPresent()) {
+        boolean userExists = Utils.findUserByPhone(session, session.getContext().getRealm(), phoneNumber).isPresent();
+        boolean allowMissingUser = TokenCodeType.AUTH.equals(type)
+                || TokenCodeType.REGISTRATION.equals(type)
+                || TokenCodeType.VERIFY.equals(type);
+
+        if (userExists || allowMissingUser) {
             try {
                 session.getProvider(MessageSenderService.class, service).sendSmsMessage(type,phoneNumber,token.getCode(),tokenExpiresIn,kind);
                 getTokenCodeService().persistCode(token, type, tokenExpiresIn);
@@ -145,11 +150,11 @@ public class DefaultPhoneProvider implements PhoneProvider {
             }
         }
 
-    else {
-        logger.info(String.format("Unknown phone number %s, not sending %s code to %s", phoneNumber, type.label,
-                sourceAddr));
-        throw new ServiceUnavailableException("User not found. Please check your phone number and try again.");
-    }
+        else {
+            logger.info(String.format("Unknown phone number %s, not sending %s code to %s", phoneNumber, type.label,
+                    sourceAddr));
+            throw new ServiceUnavailableException("User not found. Please check your phone number and try again.");
+        }
 
 
         return tokenExpiresIn;

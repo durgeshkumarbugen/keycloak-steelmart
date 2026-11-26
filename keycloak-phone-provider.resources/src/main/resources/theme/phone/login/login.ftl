@@ -272,28 +272,42 @@
           </div>
         </div>
 
-        <div v-else-if="screen === 'create'">
+        <div v-else-if="screen === 'email-create-screen'">
           <h2 class="section-title">Create account</h2>
+          <p class="muted-text">Enter your details and OTP sent to your email.</p>
 
           <label class="field-label">Email</label>
           <input class="input-text" type="text" :value="email" readonly />
 
-          <label class="field-label" for="fullNameField">First &amp; last name</label>
-          <input id="fullNameField" class="input-text" type="text" v-model="fullName" />
+          <label class="field-label" for="emailFirstNameField">First name</label>
+          <input id="emailFirstNameField" class="input-text" type="text" v-model="emailFirstName" />
+
+          <label class="field-label" for="emailLastNameField">Last name</label>
+          <input id="emailLastNameField" class="input-text" type="text" v-model="emailLastName" />
 
           <label class="field-label" for="createPasswordField">Choose password</label>
           <input id="createPasswordField" class="input-text password" type="password" v-model="createPassword" autocomplete="new-password" />
+
+          <label class="field-label">OTP</label>
+          <div class="input-inline" style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap; margin-top:8px;">
+            <input v-for="(digit, index) in emailOtpDigits" :key="'email-' + index" type="text" maxlength="1" inputmode="numeric"
+                   class="input-text" style="width:42px; text-align:center; font-size:22px; margin:0; border-bottom:2px solid #2f5bd7;"
+                   v-model="emailOtpDigits[index]" @input="handleEmailOtpInput(index, $event)" @keydown="handleEmailOtpKeydown(index, $event)" :ref="'emailOtpInput' + index" />
+          </div>
+
           <div class="muted-text" v-if="createAccountErrorMessage" style="color:#d93a32;">{{ createAccountErrorMessage }}</div>
+          <div class="muted-text" v-if="emailOtpTimerText">{{ emailOtpTimerText }}</div>
+          <div class="muted-text" v-if="emailShowResend" style="cursor:pointer; color:#2f5bd7;" @click="resendEmailOtp()">Resend OTP</div>
 
           <div class="actions-row">
             <button type="button" class="secondary" @click="goBackToEmail()">CANCEL</button>
-            <button type="button" class="primary" :disabled="createAccountInProgress" @click="submitCreateAccount()">
-              {{ createAccountInProgress ? 'SAVING' : 'SAVE' }}
+            <button type="button" class="primary" :disabled="createAccountInProgress || emailOtpSendInProgress" @click="submitCreateAccount()">
+              {{ createAccountInProgress ? 'VERIFYING' : (emailOtpSendInProgress ? 'SENDING OTP' : 'VERIFY & CREATE') }}
             </button>
           </div>
         </div>
 
-        <div v-else-if="screen === 'phone-screen' || screen === 'otp-screen'">
+        <div v-else-if="screen === 'phone-screen' || screen === 'otp-screen' || screen === 'phone-create-screen'">
           <div v-if="screen === 'phone-screen'">
             <div class="mb20">
               <label for="phoneNumberInput" class="field-label">JSW Registered Mobile Number</label>
@@ -308,14 +322,17 @@
               </div>
               <div class="muted-text">Captcha: <strong>{{ currentCaptcha }}</strong></div>
             </div>
+            <div class="muted-text" v-if="phoneErrorMessage" style="color:#d93a32;">{{ phoneErrorMessage }}</div>
 
             <div class="actions-row">
               <button type="button" class="secondary" @click="backHome()">CANCEL</button>
-              <button type="button" class="primary" @click="validateAndSendOTP()">NEXT</button>
+              <button type="button" class="primary" :disabled="phoneCheckInProgress" @click="validateAndSendOTP()">
+                {{ phoneCheckInProgress ? 'CHECKING' : 'NEXT' }}
+              </button>
             </div>
           </div>
 
-          <div v-else>
+          <div v-else-if="screen === 'otp-screen'">
             <h2 class="section-title">OTP Verification</h2>
             <p class="muted-text">You will receive an OTP on your registered phone number.</p>
 
@@ -325,12 +342,45 @@
                      v-model="otpDigits[index]" @input="handleOtpInput(index, $event)" @keydown="handleOtpKeydown(index, $event)" :ref="'otpInput' + index" />
             </div>
 
+            <div class="muted-text" v-if="phoneErrorMessage" style="color:#d93a32;">{{ phoneErrorMessage }}</div>
             <div class="muted-text" v-if="timerText">{{ timerText }}</div>
             <div class="muted-text" v-if="showResend" style="cursor:pointer; color:#2f5bd7;" @click="resendOtp()">Resend OTP</div>
 
             <div class="actions-row" style="margin-top:26px;">
               <button type="button" class="secondary" @click="backHome()">CANCEL</button>
               <button type="button" class="primary" @click="submitPhoneOtp()">VERIFY</button>
+            </div>
+          </div>
+
+          <div v-else>
+            <h2 class="section-title">Create account</h2>
+            <p class="muted-text">Enter your details and OTP to create your account.</p>
+
+            <label class="field-label">Mobile number</label>
+            <input class="input-text" type="text" :value="'+91' + phoneNumber" readonly />
+
+            <label class="field-label" for="phoneFirstNameField">First name</label>
+            <input id="phoneFirstNameField" class="input-text" type="text" v-model="phoneFirstName" />
+
+            <label class="field-label" for="phoneLastNameField">Last name</label>
+            <input id="phoneLastNameField" class="input-text" type="text" v-model="phoneLastName" />
+
+            <label class="field-label">OTP</label>
+            <div class="input-inline" style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap; margin-top:8px;">
+              <input v-for="(digit, index) in otpDigits" :key="'create-' + index" type="text" maxlength="1" inputmode="numeric"
+                     class="input-text" style="width:42px; text-align:center; font-size:22px; margin:0; border-bottom:2px solid #2f5bd7;"
+                     v-model="otpDigits[index]" @input="handleOtpInput(index, $event)" @keydown="handleOtpKeydown(index, $event)" :ref="'otpInput' + index" />
+            </div>
+
+            <div class="muted-text" v-if="phoneErrorMessage" style="color:#d93a32;">{{ phoneErrorMessage }}</div>
+            <div class="muted-text" v-if="timerText">{{ timerText }}</div>
+            <div class="muted-text" v-if="showResend" style="cursor:pointer; color:#2f5bd7;" @click="resendOtp()">Resend OTP</div>
+
+            <div class="actions-row" style="margin-top:26px;">
+              <button type="button" class="secondary" @click="backHome()">CANCEL</button>
+              <button type="button" class="primary" :disabled="phoneRegisterInProgress" @click="submitPhoneRegistration()">
+                {{ phoneRegisterInProgress ? 'SAVING' : 'VERIFY' }}
+              </button>
             </div>
           </div>
         </div>
@@ -345,8 +395,13 @@
       screen: 'home',
       email: '',
       password: '',
-      fullName: '',
+      emailFirstName: '',
+      emailLastName: '',
       createPassword: '',
+      emailOtpCode: '',
+      emailOtpDigits: ['', '', '', '', '', ''],
+      emailOtpTimerText: '',
+      emailShowResend: false,
       phoneNumber: '',
       captchaInput: '',
       currentCaptcha: '',
@@ -355,15 +410,28 @@
       timerText: '',
       showResend: false,
       emailCheckInProgress: false,
+      emailOtpSendInProgress: false,
       emailErrorMessage: '',
       createAccountInProgress: false,
       createAccountErrorMessage: '',
+      phoneCheckInProgress: false,
+      phoneRegisterInProgress: false,
+      phoneUserExists: true,
+      phoneFirstName: '',
+      phoneLastName: '',
+      phoneErrorMessage: '',
       registrationAllowed: <#if realm.registrationAllowed>true<#else>false</#if>
     },
     mounted: function() {
       this.generateCaptcha();
     },
     watch: {
+      emailOtpDigits: {
+        handler: function(val) {
+          this.emailOtpCode = val.join('');
+        },
+        deep: true
+      },
       otpDigits: {
         handler: function(val) {
           this.otpCode = val.join('');
@@ -377,30 +445,57 @@
         this.screen = 'home';
         this.email = '';
         this.password = '';
-        this.fullName = '';
-        this.createPassword = '';
+        this.emailCheckInProgress = false;
+        this.emailErrorMessage = '';
+        this.resetEmailRegistrationState();
         this.phoneNumber = '';
+        this.phoneFirstName = '';
+        this.phoneLastName = '';
         this.captchaInput = '';
         this.otpDigits = ['', '', '', '', '', ''];
         this.timerText = '';
         this.showResend = false;
         this.otpCode = '';
-        this.emailCheckInProgress = false;
-        this.emailErrorMessage = '';
-        this.createAccountInProgress = false;
-        this.createAccountErrorMessage = '';
+        this.phoneCheckInProgress = false;
+        this.phoneRegisterInProgress = false;
+        this.phoneUserExists = true;
+        this.phoneErrorMessage = '';
         document.getElementById('phoneActivated').value = 'false';
         document.getElementById('phoneNumberHidden').value = '';
         document.getElementById('code').value = '';
         this.generateCaptcha();
       },
+      resetEmailRegistrationState: function() {
+        this.emailFirstName = '';
+        this.emailLastName = '';
+        this.createPassword = '';
+        this.emailOtpCode = '';
+        this.emailOtpDigits = ['', '', '', '', '', ''];
+        this.emailOtpTimerText = '';
+        this.emailShowResend = false;
+        this.emailOtpSendInProgress = false;
+        this.createAccountInProgress = false;
+        this.createAccountErrorMessage = '';
+      },
       showEmailFlow: function() {
         this.screen = 'email';
         this.emailErrorMessage = '';
-        this.createAccountErrorMessage = '';
+        this.password = '';
+        this.emailCheckInProgress = false;
+        this.resetEmailRegistrationState();
       },
       showPhoneFlow: function() {
         this.screen = 'phone-screen';
+        this.phoneErrorMessage = '';
+        this.phoneCheckInProgress = false;
+        this.phoneRegisterInProgress = false;
+        this.phoneUserExists = true;
+        this.phoneFirstName = '';
+        this.phoneLastName = '';
+        this.otpDigits = ['', '', '', '', '', ''];
+        this.otpCode = '';
+        this.timerText = '';
+        this.showResend = false;
         this.generateCaptcha();
       },
       handleEmailNext: function() {
@@ -409,13 +504,14 @@
           this.emailErrorMessage = 'Please enter your email.';
           return;
         }
+        var normalizedValue = value.toLowerCase();
         this.emailErrorMessage = '';
-        this.email = value;
+        this.email = normalizedValue;
         this.emailCheckInProgress = true;
 
         var vm = this;
         axios.get(window.location.origin + '/realms/${realm.name}/sms/user-exists', {
-          params: { email: value }
+          params: { email: normalizedValue }
         }).then(function(res) {
           var existsValue = res && res.data ? res.data.exists : false;
           var exists = existsValue === true || existsValue === 'true';
@@ -424,7 +520,13 @@
             return;
           }
           vm.createAccountErrorMessage = '';
-          vm.screen = exists ? 'password' : 'create';
+          if (exists) {
+            vm.screen = 'password';
+            return;
+          }
+          vm.resetEmailRegistrationState();
+          vm.screen = 'email-create-screen';
+          vm.sendRegistrationEmailOtp();
         }).catch(function(err) {
           vm.emailErrorMessage = 'Unable to verify email right now. Please try again.';
         }).then(function() {
@@ -434,21 +536,114 @@
       goBackToEmail: function() {
         this.screen = 'email';
         this.emailErrorMessage = '';
-        this.createAccountErrorMessage = '';
+        this.password = '';
+        this.resetEmailRegistrationState();
+      },
+      submitEmailLoginWithPassword: function(password) {
+        document.getElementById('phoneActivated').value = 'false';
+        document.getElementById('phoneNumberHidden').value = '';
+        document.getElementById('code').value = '';
+        document.getElementById('username').value = this.email;
+        document.getElementById('password').value = password;
+        document.getElementById('kc-form-login').submit();
       },
       submitPassword: function() {
         if (this.password && this.password.length > 0) {
-          document.getElementById('phoneActivated').value = 'false';
-          document.getElementById('phoneNumberHidden').value = '';
-          document.getElementById('code').value = '';
-          document.getElementById('username').value = this.email;
-          document.getElementById('password').value = this.password;
-          document.getElementById('kc-form-login').submit();
+          this.submitEmailLoginWithPassword(this.password);
+        }
+      },
+      sendRegistrationEmailOtp: function() {
+        this.createAccountErrorMessage = '';
+        this.emailOtpSendInProgress = true;
+
+        var payload = new URLSearchParams();
+        payload.append('email', this.email);
+
+        var vm = this;
+        axios.post(window.location.origin + '/realms/${realm.name}/sms/send-registration-email-otp',
+          payload,
+          { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+        ).then(function(res) {
+          var expiresIn = res && res.data ? Number(res.data.expires_in || 0) : 0;
+          vm.emailOtpDigits = ['', '', '', '', '', ''];
+          vm.emailOtpCode = '';
+          vm.disableEmailOtpSend(expiresIn > 0 ? expiresIn : 60);
+        }).catch(function(err) {
+          var status = err && err.response ? err.response.status : 0;
+          if (status === 409) {
+            vm.createAccountErrorMessage = 'Email is already registered. Please sign in with password.';
+            vm.screen = 'password';
+            vm.emailShowResend = false;
+            vm.emailOtpTimerText = '';
+            return;
+          }
+          if (status === 403) {
+            vm.createAccountErrorMessage = 'Registration is disabled. Please contact support.';
+            vm.emailShowResend = false;
+            vm.emailOtpTimerText = '';
+            return;
+          }
+          vm.createAccountErrorMessage = 'Unable to send OTP right now. Please try again.';
+          vm.emailShowResend = true;
+          vm.emailOtpTimerText = '';
+        }).then(function() {
+          vm.emailOtpSendInProgress = false;
+        });
+      },
+      disableEmailOtpSend: function(seconds) {
+        var vm = this;
+        if (seconds <= 0) {
+          this.emailOtpTimerText = '';
+          this.emailShowResend = true;
+          return;
+        }
+        var mins = Math.floor(seconds / 60);
+        var secs = seconds % 60;
+        this.emailOtpTimerText = 'Resend OTP in ' + String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+        this.emailShowResend = false;
+        setTimeout(function() {
+          vm.disableEmailOtpSend(seconds - 1);
+        }, 1000);
+      },
+      resendEmailOtp: function() {
+        if (this.emailOtpSendInProgress) {
+          return;
+        }
+        this.sendRegistrationEmailOtp();
+      },
+      handleEmailOtpInput: function(index, event) {
+        var value = (event.target.value || '').replace(/\D/g, '');
+        this.emailOtpDigits[index] = value.slice(-1);
+        if (value && index < 5) {
+          var next = this.$refs['emailOtpInput' + (index + 1)];
+          if (next && next[0]) {
+            next[0].focus();
+          }
+        }
+      },
+      handleEmailOtpKeydown: function(index, event) {
+        if (event.key === 'Backspace' && !this.emailOtpDigits[index] && index > 0) {
+          var prev = this.$refs['emailOtpInput' + (index - 1)];
+          if (prev && prev[0]) {
+            prev[0].focus();
+          }
         }
       },
       submitCreateAccount: function() {
-        if (!this.fullName || !this.createPassword) {
-          this.createAccountErrorMessage = 'Please enter full name and password.';
+        var firstName = (this.emailFirstName || '').trim();
+        var lastName = (this.emailLastName || '').trim();
+        var otp = this.emailOtpCode || this.emailOtpDigits.join('');
+
+        if (!firstName || !lastName) {
+          this.createAccountErrorMessage = 'Please enter first name and last name.';
+          return;
+        }
+        if (!this.createPassword) {
+          this.createAccountErrorMessage = 'Please choose a password.';
+          return;
+        }
+        if (!otp || otp.length !== 6) {
+          this.createAccountErrorMessage = 'Please enter a valid 6-digit OTP.';
           return;
         }
         this.createAccountErrorMessage = '';
@@ -458,13 +653,9 @@
         document.getElementById('phoneNumberHidden').value = '';
         document.getElementById('code').value = '';
 
-        var trimmedName = this.fullName.trim();
-        var nameParts = trimmedName.split(/\s+/);
-        var firstName = nameParts[0] || trimmedName;
-        var lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : firstName;
-
         var payload = new URLSearchParams();
         payload.append('email', this.email);
+        payload.append('code', otp);
         payload.append('firstName', firstName);
         payload.append('lastName', lastName);
         payload.append('password', this.createPassword);
@@ -475,14 +666,38 @@
           { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
         ).then(function() {
           vm.password = vm.createPassword;
-          document.getElementById('username').value = vm.email;
-          document.getElementById('password').value = vm.password;
-          document.getElementById('kc-form-login').submit();
+          vm.submitEmailLoginWithPassword(vm.password);
         }).catch(function(err) {
           var status = err && err.response ? err.response.status : 0;
+          var errorCode = err && err.response && err.response.data ? err.response.data.error : '';
+          var remainingAttempts = err && err.response && err.response.data ? err.response.data.remainingAttempts : null;
           if (status === 409) {
             vm.createAccountErrorMessage = 'Email is already registered. Please sign in with password.';
             vm.screen = 'password';
+            return;
+          }
+          if (status === 429 || errorCode === 'otp_attempts_exceeded') {
+            vm.createAccountErrorMessage = 'Maximum OTP attempts reached. Please resend OTP and try again.';
+            vm.emailOtpTimerText = '';
+            vm.emailShowResend = true;
+            return;
+          }
+          if (status === 403 && errorCode === 'invalid_code') {
+            if (remainingAttempts !== null && remainingAttempts !== undefined) {
+              vm.createAccountErrorMessage = 'Incorrect OTP. ' + remainingAttempts + ' attempt(s) left.';
+            } else {
+              vm.createAccountErrorMessage = 'Incorrect OTP. Please enter the correct code sent to your email.';
+            }
+            return;
+          }
+          if (status === 400 && errorCode === 'code_expired') {
+            vm.createAccountErrorMessage = 'OTP expired. Please resend OTP.';
+            vm.emailOtpTimerText = '';
+            vm.emailShowResend = true;
+            return;
+          }
+          if (status === 400 && errorCode === 'invalid_password') {
+            vm.createAccountErrorMessage = 'Password does not meet realm policy. Please choose a stronger password.';
             return;
           }
           if (status === 403) {
@@ -505,25 +720,50 @@
       },
       validateAndSendOTP: function() {
         if ((this.phoneNumber || '').trim().length !== 10) {
+          this.phoneErrorMessage = 'Please enter a valid 10-digit mobile number.';
           return;
         }
         if ((this.captchaInput || '').trim().toUpperCase() !== (this.currentCaptcha || '').toUpperCase()) {
+          this.phoneErrorMessage = 'Captcha does not match. Please try again.';
           this.generateCaptcha();
           return;
         }
-        this.sendOtpForPhone();
+        this.phoneErrorMessage = '';
+        this.checkPhoneAndSendOtp();
       },
-      sendOtpForPhone: function() {
+      checkPhoneAndSendOtp: function() {
         var vm = this;
-        axios.get(window.location.origin + '/realms/${realm.name}/sms/authentication-code', {
-          params: { phoneNumber: '+91' + this.phoneNumber }
+        vm.phoneCheckInProgress = true;
+        var normalizedPhone = '+91' + vm.phoneNumber;
+        axios.get(window.location.origin + '/realms/${realm.name}/sms/phone-exists', {
+          params: { phoneNumber: normalizedPhone }
         }).then(function(res) {
-          vm.screen = 'otp-screen';
+          var existsValue = res && res.data ? res.data.exists : false;
+          vm.phoneUserExists = existsValue === true || existsValue === 'true';
+          vm.sendOtpForPhone(vm.phoneUserExists ? 'otp-screen' : 'phone-create-screen');
+        }).catch(function(err) {
+          var backendError = err && err.response && err.response.data ? (err.response.data.error || err.response.data.error_description) : '';
+          vm.phoneErrorMessage = backendError || 'Unable to verify phone right now. Please try again.';
+          vm.generateCaptcha();
+        }).then(function() {
+          vm.phoneCheckInProgress = false;
+        });
+      },
+      sendOtpForPhone: function(nextScreen) {
+        var vm = this;
+        var normalizedPhone = '+91' + vm.phoneNumber;
+        axios.get(window.location.origin + '/realms/${realm.name}/sms/authentication-code', {
+          params: { phoneNumber: normalizedPhone }
+        }).then(function(res) {
+          vm.screen = nextScreen || 'otp-screen';
           vm.showResend = false;
           vm.otpDigits = ['', '', '', '', '', ''];
           vm.otpCode = '';
+          vm.phoneErrorMessage = '';
           vm.disableSend(res.data.expires_in || 60);
         }).catch(function(err) {
+          var backendError = err && err.response && err.response.data ? (err.response.data.error || err.response.data.error_description) : '';
+          vm.phoneErrorMessage = backendError || 'Unable to send OTP right now. Please try again.';
           vm.generateCaptcha();
         });
       },
@@ -566,18 +806,82 @@
       resendOtp: function() {
         this.otpDigits = ['', '', '', '', '', ''];
         this.otpCode = '';
-        this.sendOtpForPhone();
+        this.phoneErrorMessage = '';
+        this.sendOtpForPhone(this.phoneUserExists ? 'otp-screen' : 'phone-create-screen');
       },
       submitPhoneOtp: function() {
         var otp = this.otpCode || this.otpDigits.join('');
-        if (otp && otp.length === 6) {
-          document.getElementById('phoneActivated').value = 'true';
-          document.getElementById('username').value = '';
-          document.getElementById('password').value = '';
-          document.getElementById('phoneNumberHidden').value = '+91' + this.phoneNumber;
-          document.getElementById('code').value = otp;
-          document.getElementById('kc-form-login').submit();
+        if (!otp || otp.length !== 6) {
+          this.phoneErrorMessage = 'Please enter a valid 6-digit OTP.';
+          return;
         }
+        this.phoneErrorMessage = '';
+        this.submitPhoneLoginWithOtp(otp);
+      },
+      submitPhoneRegistration: function() {
+        var firstName = (this.phoneFirstName || '').trim();
+        var lastName = (this.phoneLastName || '').trim();
+        var otp = this.otpCode || this.otpDigits.join('');
+
+        if (!firstName || !lastName) {
+          this.phoneErrorMessage = 'Please enter first name and last name.';
+          return;
+        }
+        if (!otp || otp.length !== 6) {
+          this.phoneErrorMessage = 'Please enter a valid 6-digit OTP.';
+          return;
+        }
+
+        this.phoneRegisterInProgress = true;
+        this.phoneErrorMessage = '';
+
+        var payload = new URLSearchParams();
+        payload.append('phoneNumber', '+91' + this.phoneNumber);
+        payload.append('code', otp);
+        payload.append('firstName', firstName);
+        payload.append('lastName', lastName);
+
+        var vm = this;
+        axios.post(window.location.origin + '/realms/${realm.name}/sms/register-phone-user',
+          payload,
+          { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+        ).then(function() {
+          vm.phoneUserExists = true;
+          vm.submitPhoneLoginWithOtp(otp);
+        }).catch(function(err) {
+          var status = err && err.response ? err.response.status : 0;
+          var errorCode = err && err.response && err.response.data ? err.response.data.error : '';
+
+          if (status === 409) {
+            vm.phoneErrorMessage = 'Phone number is already registered. Please sign in with OTP.';
+            vm.phoneUserExists = true;
+            vm.screen = 'otp-screen';
+            return;
+          }
+          if (status === 403 && errorCode === 'invalid_code') {
+            vm.phoneErrorMessage = 'Incorrect OTP. Please enter the correct code sent to your phone.';
+            return;
+          }
+          if (status === 400 && errorCode === 'code_expired') {
+            vm.phoneErrorMessage = 'OTP expired. Please resend OTP.';
+            return;
+          }
+          if (status === 403) {
+            vm.phoneErrorMessage = 'Registration is disabled. Please contact support.';
+            return;
+          }
+          vm.phoneErrorMessage = 'Unable to create account right now. Please try again.';
+        }).then(function() {
+          vm.phoneRegisterInProgress = false;
+        });
+      },
+      submitPhoneLoginWithOtp: function(otp) {
+        document.getElementById('phoneActivated').value = 'true';
+        document.getElementById('username').value = '';
+        document.getElementById('password').value = '';
+        document.getElementById('phoneNumberHidden').value = '+91' + this.phoneNumber;
+        document.getElementById('code').value = otp;
+        document.getElementById('kc-form-login').submit();
       }
     }
   });
