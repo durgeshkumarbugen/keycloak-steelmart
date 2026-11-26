@@ -54,6 +54,7 @@
     cursor: pointer;
     font-family: 'Barlow', sans-serif;
     box-shadow: none;
+    text-decoration: none;
   }
 
   .option-button.red {
@@ -68,6 +69,13 @@
     background: #f1f1f1;
     color: #000;
     border: 1px solid #d5d5d5;
+  }
+
+  a.option-button.light {
+    cursor: pointer;
+  }
+
+  button.option-button.light[disabled] {
     cursor: not-allowed;
   }
 
@@ -223,6 +231,16 @@
   <input type="hidden" id="code" name="code" v-model="otpCode" />
 </form>
 
+<#assign googleLoginUrl = "">
+<#if social.providers??>
+  <#list social.providers as p>
+    <#if (p.alias?? && p.alias?lower_case?contains("google")) || (p.displayName?? && p.displayName?lower_case?contains("google"))>
+      <#assign googleLoginUrl = p.loginUrl>
+      <#break>
+    </#if>
+  </#list>
+</#if>
+
 <div id="auth-app" v-cloak>
     <div class="auth-shell">
       <div class="auth-card">
@@ -237,11 +255,18 @@
             <span>Sign in with phone</span>
           </button>
 
-          <button type="button" class="option-button light" disabled>
-            <span class="material-icons">g_mobiledata</span>
-            <span>Sign in with Google</span>
-            <span class="coming-soon">Coming soon</span>
-          </button>
+          <#if googleLoginUrl?has_content>
+            <a class="option-button light" href="${googleLoginUrl}">
+              <span class="material-icons">g_mobiledata</span>
+              <span>Sign in with Google</span>
+            </a>
+          <#else>
+            <button type="button" class="option-button light" disabled>
+              <span class="material-icons">g_mobiledata</span>
+              <span>Sign in with Google</span>
+              <span class="coming-soon">Not configured</span>
+            </button>
+          </#if>
         </div>
 
         <div v-else-if="screen === 'email'">
@@ -269,6 +294,26 @@
           <div class="actions-row">
             <button type="button" class="secondary" @click="goBackToEmail()">CANCEL</button>
             <button type="button" class="primary" @click="submitPassword()">NEXT</button>
+          </div>
+        </div>
+
+        <div v-else-if="screen === 'email-google-screen'">
+          <h2 class="section-title">Sign in</h2>
+          <p style="font-size:22px; margin:0 0 16px 0; color:#1f1f1f; font-weight:500;">
+            You already have an account
+          </p>
+          <p class="muted-text" style="font-size:18px; line-height:1.35; color:#1f1f1f;">
+            You’ve already used <strong>{{ email }}</strong>. Sign in with Google to continue.
+          </p>
+
+          <div class="actions-row" style="margin-top:26px;">
+            <button type="button" class="secondary" @click="goBackToEmail()">CANCEL</button>
+            <button type="button" class="primary" :disabled="!googleLoginUrl" @click="signInWithGoogle()">
+              SIGN IN WITH GOOGLE
+            </button>
+          </div>
+          <div class="muted-text" v-if="!googleLoginUrl" style="color:#d93a32;">
+            Google sign in is not configured for this realm.
           </div>
         </div>
 
@@ -420,6 +465,7 @@
       phoneFirstName: '',
       phoneLastName: '',
       phoneErrorMessage: '',
+      googleLoginUrl: '<#if googleLoginUrl?has_content>${googleLoginUrl?js_string}<#else></#if>',
       registrationAllowed: <#if realm.registrationAllowed>true<#else>false</#if>
     },
     mounted: function() {
@@ -498,6 +544,13 @@
         this.showResend = false;
         this.generateCaptcha();
       },
+      signInWithGoogle: function() {
+        if (!this.googleLoginUrl) {
+          this.emailErrorMessage = 'Google sign in is not configured for this realm.';
+          return;
+        }
+        window.location.href = this.googleLoginUrl;
+      },
       handleEmailNext: function() {
         const value = (this.email || '').trim();
         if (!value) {
@@ -515,12 +568,18 @@
         }).then(function(res) {
           var existsValue = res && res.data ? res.data.exists : false;
           var exists = existsValue === true || existsValue === 'true';
+          var googleLinkedValue = res && res.data ? res.data.googleLinked : false;
+          var googleLinked = googleLinkedValue === true || googleLinkedValue === 'true';
           if (!exists && !vm.registrationAllowed) {
             vm.emailErrorMessage = 'Registration is disabled. Please contact support.';
             return;
           }
           vm.createAccountErrorMessage = '';
           if (exists) {
+            if (googleLinked) {
+              vm.screen = 'email-google-screen';
+              return;
+            }
             vm.screen = 'password';
             return;
           }

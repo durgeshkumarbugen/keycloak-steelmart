@@ -13,11 +13,9 @@ import org.jboss.resteasy.annotations.cache.NoCache;
 import org.keycloak.authentication.actiontoken.execactions.ExecuteActionsActionToken;
 import org.keycloak.common.util.Time;
 import org.keycloak.connections.jpa.JpaConnectionProvider;
-
 import org.keycloak.email.EmailException;
 import org.keycloak.email.EmailSenderProvider;
 import org.keycloak.email.EmailTemplateProvider;
-
 import org.keycloak.models.*;
 import org.keycloak.models.utils.KeycloakModelUtils;
 import org.keycloak.services.resources.LoginActionsService;
@@ -101,15 +99,13 @@ public class SmsResource {
             throw new BadRequestException("Must supply an email");
         }
 
+        RealmModel realm = session.getContext().getRealm();
         String normalizedEmail = normalizeEmail(email);
-        boolean exists;
-        try {
-            exists = KeycloakModelUtils.findUserByNameOrEmail(session, session.getContext().getRealm(), normalizedEmail) != null;
-        } catch (ModelDuplicateException e) {
-            exists = true;
-        }
+        UserModel user = findUserByEmail(realm, normalizedEmail);
+        boolean exists = user != null;
+        boolean googleLinked = exists && hasGoogleFederatedIdentity(realm, user);
 
-        String response = String.format("{\"exists\":%s}", exists);
+        String response = String.format("{\"exists\":%s,\"googleLinked\":%s}", exists, googleLinked);
         return Response.ok(response, APPLICATION_JSON_TYPE).build();
     }
 
@@ -582,6 +578,13 @@ public class SmsResource {
                     .findFirst()
                     .orElse(null);
         }
+    }
+
+    private boolean hasGoogleFederatedIdentity(RealmModel realm, UserModel user) {
+        return session.users()
+                .getFederatedIdentitiesStream(realm, user)
+                .map(identity -> identity.getIdentityProvider() == null ? "" : identity.getIdentityProvider().toLowerCase(Locale.ROOT))
+                .anyMatch(idpAlias -> idpAlias.contains("google"));
     }
 
     private boolean sendVerifyEmailAction(RealmModel realm, UserModel user) {
