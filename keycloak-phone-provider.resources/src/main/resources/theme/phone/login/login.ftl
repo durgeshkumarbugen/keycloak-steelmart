@@ -4,6 +4,7 @@
 <#elseif section = "form">
 <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="https://www.recaptcha.net/recaptcha/api.js?render=explicit" async defer></script>
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
 <style>
@@ -220,6 +221,10 @@
     margin-top: 8px;
   }
 
+  .phone-recaptcha {
+    margin-bottom: 18px;
+  }
+
   .hidden { display: none !important; }
 </style>
 
@@ -359,13 +364,11 @@
               <input type="tel" id="phoneNumberInput" class="input-text" v-model="phoneNumber" maxlength="10" inputmode="numeric" />
             </div>
 
-            <div class="mb20">
-              <label class="field-label" for="captchaInput">Captcha</label>
-              <div class="input-inline">
-                <input type="text" id="captchaInput" class="input-text" v-model="captchaInput" />
-                <button type="button" class="inline-button light" @click="generateCaptcha()">↻</button>
+            <div class="mb20" v-if="phoneRecaptchaEnabled">
+              <label class="field-label">Captcha</label>
+              <div class="phone-recaptcha">
+                <div id="phoneRecaptchaElement"></div>
               </div>
-              <div class="muted-text">Captcha: <strong>{{ currentCaptcha }}</strong></div>
             </div>
             <div class="muted-text" v-if="phoneErrorMessage" style="color:#d93a32;">{{ phoneErrorMessage }}</div>
 
@@ -448,8 +451,9 @@
       emailOtpTimerText: '',
       emailShowResend: false,
       phoneNumber: '',
-      captchaInput: '',
-      currentCaptcha: '',
+      phoneRecaptchaKey: '',
+      phoneRecaptchaWidgetId: null,
+      phoneRecaptchaEnabled: false,
       otpCode: '',
       otpDigits: ['', '', '', '', '', ''],
       timerText: '',
@@ -469,7 +473,7 @@
       registrationAllowed: <#if realm.registrationAllowed>true<#else>false</#if>
     },
     mounted: function() {
-      this.generateCaptcha();
+      this.loadPhoneRecaptcha();
     },
     watch: {
       emailOtpDigits: {
@@ -497,7 +501,6 @@
         this.phoneNumber = '';
         this.phoneFirstName = '';
         this.phoneLastName = '';
-        this.captchaInput = '';
         this.otpDigits = ['', '', '', '', '', ''];
         this.timerText = '';
         this.showResend = false;
@@ -509,7 +512,7 @@
         document.getElementById('phoneActivated').value = 'false';
         document.getElementById('phoneNumberHidden').value = '';
         document.getElementById('code').value = '';
-        this.generateCaptcha();
+        this.resetPhoneRecaptcha();
       },
       resetEmailRegistrationState: function() {
         this.emailFirstName = '';
@@ -542,7 +545,11 @@
         this.otpCode = '';
         this.timerText = '';
         this.showResend = false;
-        this.generateCaptcha();
+        var vm = this;
+        this.$nextTick(function() {
+          vm.renderPhoneRecaptcha();
+          vm.resetPhoneRecaptcha();
+        });
       },
       signInWithGoogle: function() {
         if (!this.googleLoginUrl) {
@@ -768,29 +775,91 @@
           vm.createAccountInProgress = false;
         });
       },
-      generateCaptcha: function() {
-        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-        let captcha = '';
-        for (let i = 0; i < 5; i++) {
-          captcha += chars.charAt(Math.floor(Math.random() * chars.length));
+      loadPhoneRecaptcha: function() {
+        var vm = this;
+        var primaryUrl = window.location.origin + '/realms/${realm.name}/recaptcha/key';
+        var fallbackUrl = window.location.origin + '/auth/realms/${realm.name}/recaptcha/key';
+
+        axios.get(primaryUrl).catch(function() {
+          return axios.get(fallbackUrl);
+        }).then(function(res) {
+          var key = res && res.data
+            ? (res.data.capacha_key || res.data.captcha_key || res.data.site_key || res.data.recaptchaSiteKey || res.data.key || '')
+            : '';
+          if (!key) {
+            vm.phoneRecaptchaEnabled = false;
+            return;
+          }
+          vm.phoneRecaptchaKey = key;
+          vm.phoneRecaptchaEnabled = true;
+          vm.$nextTick(function() {
+            vm.renderPhoneRecaptcha();
+          });
+        }).catch(function() {
+          vm.phoneRecaptchaEnabled = false;
+        });
+      },
+      renderPhoneRecaptcha: function() {
+        if (!this.phoneRecaptchaEnabled || !this.phoneRecaptchaKey) {
+          return;
         }
-        this.currentCaptcha = captcha;
-        this.captchaInput = '';
+
+        var container = document.getElementById('phoneRecaptchaElement');
+        if (!container) {
+          return;
+        }
+
+        if (!window.grecaptcha || typeof window.grecaptcha.render !== 'function') {
+          var vm = this;
+          setTimeout(function() {
+            vm.renderPhoneRecaptcha();
+          }, 150);
+          return;
+        }
+
+        if (this.phoneRecaptchaWidgetId === null) {
+          this.phoneRecaptchaWidgetId = window.grecaptcha.render('phoneRecaptchaElement', {
+            sitekey: this.phoneRecaptchaKey
+          });
+        }
+      },
+      resetPhoneRecaptcha: function() {
+        if (!this.phoneRecaptchaEnabled || this.phoneRecaptchaWidgetId === null) {
+          return;
+        }
+        if (!document.getElementById('phoneRecaptchaElement')) {
+          return;
+        }
+        if (window.grecaptcha && typeof window.grecaptcha.reset === 'function') {
+          window.grecaptcha.reset(this.phoneRecaptchaWidgetId);
+        }
+      },
+      getPhoneRecaptchaResponse: function() {
+        if (!this.phoneRecaptchaEnabled || this.phoneRecaptchaWidgetId === null) {
+          return '';
+        }
+        if (!window.grecaptcha || typeof window.grecaptcha.getResponse !== 'function') {
+          return '';
+        }
+        return window.grecaptcha.getResponse(this.phoneRecaptchaWidgetId);
       },
       validateAndSendOTP: function() {
         if ((this.phoneNumber || '').trim().length !== 10) {
           this.phoneErrorMessage = 'Please enter a valid 10-digit mobile number.';
           return;
         }
-        if ((this.captchaInput || '').trim().toUpperCase() !== (this.currentCaptcha || '').toUpperCase()) {
-          this.phoneErrorMessage = 'Captcha does not match. Please try again.';
-          this.generateCaptcha();
-          return;
+        var recaptchaResponse = '';
+        if (this.phoneRecaptchaEnabled) {
+          recaptchaResponse = this.getPhoneRecaptchaResponse();
+          if (!recaptchaResponse) {
+            this.phoneErrorMessage = 'Please complete the captcha.';
+            return;
+          }
         }
         this.phoneErrorMessage = '';
-        this.checkPhoneAndSendOtp();
+        this.checkPhoneAndSendOtp(recaptchaResponse);
       },
-      checkPhoneAndSendOtp: function() {
+      checkPhoneAndSendOtp: function(recaptchaResponse) {
         var vm = this;
         vm.phoneCheckInProgress = true;
         var normalizedPhone = '+91' + vm.phoneNumber;
@@ -799,20 +868,24 @@
         }).then(function(res) {
           var existsValue = res && res.data ? res.data.exists : false;
           vm.phoneUserExists = existsValue === true || existsValue === 'true';
-          vm.sendOtpForPhone(vm.phoneUserExists ? 'otp-screen' : 'phone-create-screen');
+          vm.sendOtpForPhone(vm.phoneUserExists ? 'otp-screen' : 'phone-create-screen', recaptchaResponse);
         }).catch(function(err) {
           var backendError = err && err.response && err.response.data ? (err.response.data.error || err.response.data.error_description) : '';
           vm.phoneErrorMessage = backendError || 'Unable to verify phone right now. Please try again.';
-          vm.generateCaptcha();
+          vm.resetPhoneRecaptcha();
         }).then(function() {
           vm.phoneCheckInProgress = false;
         });
       },
-      sendOtpForPhone: function(nextScreen) {
+      sendOtpForPhone: function(nextScreen, recaptchaResponse) {
         var vm = this;
         var normalizedPhone = '+91' + vm.phoneNumber;
+        var params = { phoneNumber: normalizedPhone };
+        if (recaptchaResponse) {
+          params['g-recaptcha-response'] = recaptchaResponse;
+        }
         axios.get(window.location.origin + '/realms/${realm.name}/sms/authentication-code', {
-          params: { phoneNumber: normalizedPhone }
+          params: params
         }).then(function(res) {
           vm.screen = nextScreen || 'otp-screen';
           vm.showResend = false;
@@ -823,7 +896,7 @@
         }).catch(function(err) {
           var backendError = err && err.response && err.response.data ? (err.response.data.error || err.response.data.error_description) : '';
           vm.phoneErrorMessage = backendError || 'Unable to send OTP right now. Please try again.';
-          vm.generateCaptcha();
+          vm.resetPhoneRecaptcha();
         });
       },
       disableSend: function(seconds) {

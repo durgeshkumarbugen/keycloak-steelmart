@@ -185,11 +185,16 @@
         });
 
         var onloadCallback = function() {
+            var primaryUrl = window.location.origin + '/realms/${realm.name}/recaptcha/key';
+            var fallbackUrl = window.location.origin + '/auth/realms/${realm.name}/recaptcha/key';
+
             axios
-                .get(window.location.origin + '/auth/realms/${realm.name}/recaptcha/key')
-                .then(res => {
-                    console.log(res.data);
-                    app.setrecaptcha(res.data.capacha_key);
+                .get(primaryUrl)
+                .catch(function () {
+                    return axios.get(fallbackUrl);
+                })
+                .then(function (res) {
+                    app.setrecaptcha(res.data.capacha_key || res.data.captcha_key || res.data.site_key || '');
                 });
         };
     </script>
